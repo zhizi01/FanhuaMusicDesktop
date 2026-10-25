@@ -1,7 +1,7 @@
 # MusicDesktop
 
 Electron desktop app that reads state from and controls **NetEase Cloud Music (网易云音乐) 3.x** for Windows
-(verified against 3.1.42, CEF 91, installed at `D:\AppFile\CloudMusic`).
+(verified against 3.1.42, CEF 91; the install location is auto-detected, see `NCM_PATH` below).
 
 ## Commands
 
