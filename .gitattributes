@@ -1,0 +1,15 @@
+# 统一以 LF 换行存储与检出（覆盖全局 core.autocrlf），所有文本文件均为 UTF-8 无 BOM
+* text=auto eol=lf
+
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary

@@ -1,0 +1,17 @@
+{
+  "name": "music-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron music desktop that monitors and controls NetEase Cloud Music via Chrome DevTools Protocol",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "node tools/start.js",
+    "ncm": "node tools/ncm-cli.js"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "electron": "44.9.0"
+  }
+}
