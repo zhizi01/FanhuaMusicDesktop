@@ -27,6 +27,9 @@ contextBridge.exposeInMainWorld('desktop', {
     setPassword: (password) => ipcRenderer.invoke('settings:set-password', password),
     clearPassword: () => ipcRenderer.invoke('settings:clear-password'),
   },
+  fonts: {
+    list: () => ipcRenderer.invoke('fonts:list'),
+  },
   screensaver: {
     getState: () => ipcRenderer.invoke('screensaver:get-state'),
     enter: () => ipcRenderer.invoke('screensaver:enter'),

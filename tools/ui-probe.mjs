@@ -2,6 +2,7 @@
 //   node tools/ui-probe.mjs eval "<js>"            evaluate in the renderer, print the result
 //   node tools/ui-probe.mjs shot out.png           screenshot of the renderer
 //   node tools/ui-probe.mjs move <x> <y>           dispatch a real mouse move (e.g. to wake the screensaver panel)
+//   node tools/ui-probe.mjs down|up <x> <y>        press / release the left button (drag = down, move..., up)
 //   node tools/ui-probe.mjs type "<text>"          type text into the focused element
 //   node tools/ui-probe.mjs key <Enter|Escape>     press a key
 import { writeFileSync } from 'node:fs';
@@ -30,8 +31,12 @@ if (mode === 'eval') {
   writeFileSync(args[0], Buffer.from(r.result.data, 'base64'));
   console.log(`saved ${args[0]}`);
 } else if (mode === 'move') {
-  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Number(args[0]), y: Number(args[1]) });
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Number(args[0]), y: Number(args[1]), buttons: Number(process.env.BUTTONS || 0) });
   console.log('moved');
+} else if (mode === 'down' || mode === 'up') {
+  const type = mode === 'down' ? 'mousePressed' : 'mouseReleased';
+  await send('Input.dispatchMouseEvent', { type, x: Number(args[0]), y: Number(args[1]), button: 'left', buttons: mode === 'down' ? 1 : 0, clickCount: 1 });
+  console.log(mode);
 } else if (mode === 'type') {
   await send('Input.insertText', { text: args[0] });
   console.log('typed');

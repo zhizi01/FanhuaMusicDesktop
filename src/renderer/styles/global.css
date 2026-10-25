@@ -13,7 +13,9 @@
   --warn: #f5b83d;
   --bad: #ff5c5c;
   --radius: 14px;
-  --font: 'Segoe UI', 'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;
+  --font-default: 'Segoe UI', 'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;
+  /* overridden on <html> by App.vue when the user picks a font */
+  --font: var(--font-default);
   color-scheme: dark;
 }
 

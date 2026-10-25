@@ -18,6 +18,8 @@ export const ICONS = {
   clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
   disc: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2"/><path d="M12 6a6 6 0 0 0-6 6"/>',
   lyrics: '<path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h13"/>',
+  chevron: '<path d="m6 9 6 6 6-6"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -5,6 +5,7 @@ const path = require('node:path');
 const { NcmController } = require('./ncm/controller');
 const { SettingsStore } = require('./settings');
 const { ScreenSaver } = require('./screensaver');
+const { listFonts } = require('./fonts');
 
 // Optional separate profile (settings + single-instance lock), e.g. for testing without touching real settings.
 if (process.env.MUSIC_DESKTOP_USER_DATA) app.setPath('userData', process.env.MUSIC_DESKTOP_USER_DATA);
@@ -105,6 +106,7 @@ function registerIpc() {
   ipcMain.handle('settings:update', safe((patch) => ({ ok: true, settings: settings.update(patch) })));
   ipcMain.handle('settings:set-password', safe((password) => ({ ok: true, settings: settings.setPassword(password) })));
   ipcMain.handle('settings:clear-password', safe(() => ({ ok: true, settings: settings.clearPassword() })));
+  ipcMain.handle('fonts:list', () => listFonts());
 
   ipcMain.handle('screensaver:get-state', () => screensaver.getState());
   ipcMain.handle('screensaver:enter', () => screensaver.enter());

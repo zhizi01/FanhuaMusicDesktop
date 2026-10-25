@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useNcm } from '../composables/useNcm';
 import { useSettings } from '../composables/useSettings';
 import { useToast } from '../composables/useToast';
-import type { ScreensaverPreset, SettingsResult } from '../types';
+import type { CoverLayout, ScreensaverPreset, SettingsResult } from '../types';
+import FontPicker from './FontPicker.vue';
 import Icon from './Icon.vue';
 import IconButton from './IconButton.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
@@ -15,6 +16,38 @@ const { connection } = useNcm();
 const { show } = useToast();
 
 const ss = computed(() => settings.value?.screensaver);
+const ap = computed(() => settings.value?.appearance);
+
+// ---------- home appearance ----------
+const LAYOUT_NAMES: Record<CoverLayout, string> = { stacked: '上下排列', side: '左右排列' };
+const DEFAULT_APPEARANCE = { coverLayout: 'stacked' as const, coverSize: { stacked: 58, side: 30 }, fontFamily: '' };
+
+const coverRange = computed(() => (ap.value ? ap.value.coverSizeRange[ap.value.coverLayout] : [0, 100]));
+const coverSize = computed(() => (ap.value ? ap.value.coverSize[ap.value.coverLayout] : 0));
+/** While the size slider is being dragged the panel turns see-through so the cover can be watched live. */
+const peeking = ref(false);
+const stopPeek = () => (peeking.value = false);
+onMounted(() => window.addEventListener('pointerup', stopPeek));
+onBeforeUnmount(() => window.removeEventListener('pointerup', stopPeek));
+
+const chooseLayout = (coverLayout: CoverLayout) => run(update({ appearance: { coverLayout } }));
+
+function previewCoverSize(e: Event) {
+  if (ap.value) ap.value.coverSize[ap.value.coverLayout] = Number((e.target as HTMLInputElement).value);
+}
+function saveCoverSize() {
+  if (ap.value) run(update({ appearance: { coverSize: { [ap.value.coverLayout]: coverSize.value } } }));
+}
+
+const fontFamily = computed({
+  get: () => ap.value?.fontFamily ?? '',
+  set: (value: string) => {
+    if (ap.value) ap.value.fontFamily = value;
+    run(update({ appearance: { fontFamily: value } }));
+  },
+});
+
+const resetAppearance = () => run(update({ appearance: DEFAULT_APPEARANCE }), '已恢复默认外观');
 const editingPassword = ref(false);
 const password = ref('');
 const confirm = ref('');
@@ -65,14 +98,60 @@ async function removePassword() {
 
 <template>
   <Transition name="sheet">
-    <div v-if="open" class="mask" @click.self="open = false">
+    <div v-if="open" class="mask" :class="{ peek: peeking }" @click.self="open = false">
       <aside class="panel">
         <header class="panel-header">
           <h2>设置</h2>
           <IconButton icon="close" size="sm" title="关闭" @click="open = false" />
         </header>
 
-        <div v-if="ss" class="body">
+        <div v-if="ss && ap" class="body">
+          <section>
+            <div class="section-title">
+              <h3>主页外观</h3>
+              <button type="button" class="link" @click="resetAppearance">恢复默认</button>
+            </div>
+            <div class="layouts">
+              <button
+                v-for="id in ap.layouts"
+                :key="id"
+                type="button"
+                class="layout"
+                :class="{ selected: ap.coverLayout === id }"
+                @click="chooseLayout(id)"
+              >
+                <span class="diagram" :class="id">
+                  <i class="d-cover" />
+                  <span class="d-lines"><i /><i class="short" /></span>
+                </span>
+                <strong>{{ LAYOUT_NAMES[id] }}</strong>
+              </button>
+            </div>
+
+            <div class="slider-row keep">
+              <div class="slider-head">
+                <span>封面尺寸</span>
+                <span class="value">{{ coverSize }}%</span>
+              </div>
+              <input
+                class="slider"
+                type="range"
+                :min="coverRange[0]"
+                :max="coverRange[1]"
+                step="1"
+                :value="coverSize"
+                :style="{ '--fill': `${((coverSize - coverRange[0]) / (coverRange[1] - coverRange[0])) * 100}%` }"
+                @pointerdown="peeking = true"
+                @input="previewCoverSize"
+                @change="saveCoverSize"
+              />
+              <small class="slider-hint">按住拖动时可实时预览；上下 / 左右排列分别记忆尺寸</small>
+            </div>
+
+            <div class="label font-label"><span>字体</span><small>应用于整个界面（含屏保）</small></div>
+            <FontPicker v-model="fontFamily" />
+          </section>
+
           <section>
             <h3>屏保样式</h3>
             <div class="presets">
@@ -178,6 +257,159 @@ h3 {
   font-weight: 600;
   letter-spacing: 1px;
   color: var(--fg-3);
+}
+.section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.link {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  color: var(--fg-3);
+  cursor: pointer;
+}
+.link:hover {
+  color: var(--fg);
+}
+
+/* ---------- home appearance ---------- */
+.layouts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--glass);
+  cursor: pointer;
+  font-size: 13px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.layout:hover {
+  background: var(--glass-strong);
+}
+.layout.selected {
+  border-color: var(--accent);
+}
+.diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8%;
+  aspect-ratio: 16 / 9;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.diagram.stacked {
+  flex-direction: column;
+  gap: 6px;
+}
+.d-cover {
+  flex: none;
+  width: 30%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
+}
+.stacked .d-cover {
+  width: 24%;
+}
+.d-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  width: 100%;
+}
+.stacked .d-lines {
+  flex: none;
+  align-items: center;
+}
+.d-lines i {
+  display: block;
+  width: 72%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.55);
+}
+.d-lines i.short {
+  width: 46%;
+  opacity: 0.55;
+}
+.slider-row {
+  margin-top: 16px;
+  transition: background 0.2s ease, padding 0.2s ease;
+}
+.slider-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+.slider-head .value {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+}
+.slider {
+  width: 100%;
+  height: 18px;
+  margin: 8px 0 4px;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent) var(--fill), rgba(255, 255, 255, 0.18) var(--fill));
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.slider-hint {
+  font-size: 11.5px;
+  color: var(--fg-3);
+}
+.font-label {
+  margin-top: 16px;
+}
+
+/* See-through mode while dragging the size slider: only the slider row stays visible. */
+.mask.peek {
+  background: transparent;
+}
+.mask.peek .panel {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.mask.peek .panel * {
+  visibility: hidden;
+}
+.mask.peek .keep,
+.mask.peek .keep * {
+  visibility: visible;
+}
+.mask.peek .keep {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(16, 16, 22, 0.55);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 .presets {
   display: grid;

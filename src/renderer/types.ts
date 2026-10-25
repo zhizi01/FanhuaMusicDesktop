@@ -72,8 +72,19 @@ export interface Result {
 }
 
 export type ScreensaverPreset = 'lyrics' | 'vinyl' | 'clock';
+/** stacked: cover on top, text below; side: cover on the left, text on the right. */
+export type CoverLayout = 'stacked' | 'side';
 
 export interface Settings {
+  appearance: {
+    coverLayout: CoverLayout;
+    /** Cover width in % of the window width, per layout. */
+    coverSize: Record<CoverLayout, number>;
+    /** '' = default font stack */
+    fontFamily: string;
+    layouts: CoverLayout[];
+    coverSizeRange: Record<CoverLayout, [number, number]>;
+  };
   screensaver: {
     preset: ScreensaverPreset;
     showTranslation: boolean;
@@ -84,6 +95,11 @@ export interface Settings {
 }
 
 export interface SettingsPatch {
+  appearance?: {
+    coverLayout?: CoverLayout;
+    coverSize?: Partial<Record<CoverLayout, number>>;
+    fontFamily?: string;
+  };
   screensaver?: Partial<Pick<Settings['screensaver'], 'preset' | 'showTranslation' | 'lockEnabled'>>;
 }
 
@@ -114,6 +130,10 @@ export interface DesktopApi {
     update(patch: SettingsPatch): Promise<SettingsResult>;
     setPassword(password: string): Promise<SettingsResult>;
     clearPassword(): Promise<SettingsResult>;
+  };
+  fonts: {
+    /** Installed font family names, CJK fonts first. */
+    list(): Promise<string[]>;
   };
   screensaver: {
     getState(): Promise<ScreensaverState>;

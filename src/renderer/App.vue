@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
 import AppHeader from './components/AppHeader.vue';
 import AppToast from './components/AppToast.vue';
 import BlurBackdrop from './components/BlurBackdrop.vue';
@@ -16,10 +16,16 @@ import { coverUrl } from './utils/format';
 
 const ncm = useNcm();
 const screensaver = useScreensaver();
-useSettings();
+const { settings } = useSettings();
 
 const settingsOpen = ref(false);
 const backdrop = computed(() => coverUrl(ncm.track.value?.coverUrl, 400));
+
+// User-selected font applies to the whole UI (main view, settings, screensaver); falls back to the default stack.
+watchEffect(() => {
+  const family = settings.value?.appearance.fontFamily;
+  document.documentElement.style.setProperty('--font', family ? `"${family}", var(--font-default)` : 'var(--font-default)');
+});
 
 function openScreensaver() {
   settingsOpen.value = false;

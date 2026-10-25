@@ -49,12 +49,17 @@ TypeScript is pinned to 6.x (vue-tsc needs the JS-based compiler API; TS 7 is th
   aspect ratio applies to the OS rect incl. invisible resize borders (`extraSize` ignored), so the ratio is
   recomputed from the content height after every resize (`applyAspectRatio`). Loads `VITE_DEV_SERVER_URL` in dev,
   else `dist/renderer/index.html`; no app menu in production.
-- `src/main/settings.js` – `settings.json` in userData; screensaver preset (`lyrics|vinyl|clock`), translation
-  toggle, lock flag, password as salted scrypt hash (never sent to the renderer).
+- `src/main/settings.js` – `settings.json` in userData. `appearance`: home cover layout (`stacked|side`), cover size
+  in % of window width **kept per layout** (clamped to `COVER_SIZE_RANGE`), font family (sanitized, '' = default).
+  `screensaver`: preset (`lyrics|vinyl|clock`), translation toggle, lock flag, password as salted scrypt hash (never
+  sent to the renderer). Old files are merged with defaults on load.
+- `src/main/fonts.js` – installed font families via PowerShell `System.Drawing.Text.InstalledFontCollection`
+  (localized names like 微软雅黑, CJK first; drops symbol fonts and GDI-truncated 31-char names); cached.
+  The renderer applies the font through the `--font` CSS variable on `<html>` (App.vue).
 - `src/main/screensaver.js` – screensaver state lives in main: kiosk + always-on-top, blocks window close while
   locked, verifies the password (5 failures → 30 s lockout), restores bounds/aspect on exit.
 - `src/preload/preload.js` – `window.ncm` (getState, command, reconnect, onState, onProgress) and `window.desktop`
-  (minimize, close, settings.*, screensaver.*). Types in `src/renderer/types.ts`.
+  (minimize, close, settings.*, fonts.list, screensaver.*). Types in `src/renderer/types.ts`.
 - `src/renderer/` – Vite + Vue 3 + TS (`vite.config.mts`, root `tsconfig.json`). Singleton composables in
   `composables/` (`useNcm` interpolates progress with rAF, `useIdle` = 10 s idle detection ignoring synthetic
   mousemoves); components in `components/`, screensaver presets in `components/screensaver/`.

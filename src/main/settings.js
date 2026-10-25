@@ -7,12 +7,18 @@ const path = require('node:path');
 const PRESETS = ['lyrics', 'vinyl', 'clock'];
 const PASSWORD_MIN = 4;
 const PASSWORD_MAX = 64;
+/** Home-page cover layouts; the cover size (% of window width) is kept per layout. */
+const COVER_LAYOUTS = ['stacked', 'side'];
+const COVER_SIZE_RANGE = { stacked: [30, 80], side: [15, 45] };
 
 const DEFAULTS = {
+  appearance: { coverLayout: 'stacked', coverSize: { stacked: 58, side: 30 }, fontFamily: '' },
   screensaver: { preset: 'lyrics', showTranslation: true, lockEnabled: false, password: null },
 };
 
 const hashPassword = (password, salt) => crypto.scryptSync(password, salt, 32);
+/** Font family names end up inside a CSS string; keep them plain. */
+const sanitizeFont = (name) => String(name ?? '').replace(/["'\\;{}<>]/g, '').trim().slice(0, 80);
 
 /** Persists settings as JSON in the app's userData folder. The password is only ever stored as a scrypt hash. */
 class SettingsStore {
@@ -21,6 +27,8 @@ class SettingsStore {
     this.data = structuredClone(DEFAULTS);
     try {
       const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+      const a = saved.appearance || {};
+      this.data.appearance = { ...this.data.appearance, ...a, coverSize: { ...this.data.appearance.coverSize, ...(a.coverSize || {}) } };
       this.data.screensaver = { ...this.data.screensaver, ...(saved.screensaver || {}) };
     } catch {
       // first run or unreadable file: keep defaults
@@ -30,10 +38,28 @@ class SettingsStore {
   /** Settings as exposed to the renderer (no password hash). */
   getPublic() {
     const { password, ...screensaver } = this.data.screensaver;
-    return { screensaver: { ...screensaver, hasPassword: !!password, presets: PRESETS } };
+    const appearance = this.data.appearance;
+    return {
+      appearance: { ...appearance, coverSize: { ...appearance.coverSize }, layouts: COVER_LAYOUTS, coverSizeRange: COVER_SIZE_RANGE },
+      screensaver: { ...screensaver, hasPassword: !!password, presets: PRESETS },
+    };
   }
 
   update(patch = {}) {
+    const ap = this.data.appearance;
+    const a = patch.appearance || {};
+    if (a.coverLayout !== undefined) {
+      if (!COVER_LAYOUTS.includes(a.coverLayout)) throw new Error(`未知的封面排列: ${a.coverLayout}`);
+      ap.coverLayout = a.coverLayout;
+    }
+    for (const [layout, value] of Object.entries(a.coverSize || {})) {
+      const range = COVER_SIZE_RANGE[layout];
+      const n = Number(value);
+      if (!range || !Number.isFinite(n)) throw new Error('无效的封面尺寸');
+      ap.coverSize[layout] = Math.round(Math.min(range[1], Math.max(range[0], n)));
+    }
+    if (a.fontFamily !== undefined) ap.fontFamily = sanitizeFont(a.fontFamily);
+
     const ss = this.data.screensaver;
     const p = patch.screensaver || {};
     if (p.preset !== undefined) {
