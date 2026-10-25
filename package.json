@@ -5,13 +5,21 @@
   "description": "Electron music desktop that monitors and controls NetEase Cloud Music via Chrome DevTools Protocol",
   "main": "src/main/main.js",
   "scripts": {
-    "start": "node tools/start.js",
+    "dev": "node tools/dev.mjs",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "build": "npm run typecheck && vite build --config vite.config.mts",
+    "start": "npm run build && node tools/start.js",
     "ncm": "node tools/ncm-cli.js"
   },
   "dependencies": {
+    "vue": "3.5.44",
     "ws": "8.22.0"
   },
   "devDependencies": {
-    "electron": "44.9.0"
+    "@vitejs/plugin-vue": "6.0.10",
+    "electron": "44.9.0",
+    "typescript": "6.0.3",
+    "vite": "8.3.4",
+    "vue-tsc": "3.3.13"
   }
 }

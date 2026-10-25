@@ -50,6 +50,8 @@ class NcmController extends EventEmitter {
     this.exePath = null;
     this.lastLaunchAt = 0;
     this.everConnected = false;
+    this.manualReconnect = false;
+    this.wake = null;
     this.injectTimer = null;
     this.clientId = crypto.randomUUID();
     this.state = { connection: { status: 'idle', message: '' }, ...initialPlayerState() };
@@ -61,10 +63,20 @@ class NcmController extends EventEmitter {
     this.#loop();
   }
 
+  /** Drops the current connection and reconnects now; launches NCM if needed, even after the user quit it. */
+  reconnect() {
+    this.manualReconnect = true;
+    this.lastLaunchAt = 0;
+    this.#setConnection('connecting', '正在重新连接网易云音乐...');
+    if (this.client) this.client.close();
+    if (this.wake) this.wake();
+  }
+
   /** Releases the page bridge (removed once no controller uses it) and disconnects. */
   async stop() {
     this.running = false;
     clearTimeout(this.injectTimer);
+    if (this.wake) this.wake();
     const client = this.client;
     if (!client) return;
     const release = `window.__musicDesktop && window.__musicDesktop.release(${JSON.stringify(this.clientId)})`;
@@ -101,8 +113,21 @@ class NcmController extends EventEmitter {
         this.client = null;
         this.#setConnection('error', err.message);
       }
-      await sleep(this.opts.pollInterval);
+      await this.#sleep(this.opts.pollInterval);
     }
+  }
+
+  /** Poll delay that reconnect()/stop() can cut short. */
+  #sleep(ms) {
+    return new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        this.wake = null;
+        resolve();
+      };
+      const timer = setTimeout(done, ms);
+      this.wake = done;
+    });
   }
 
   async #tryConnect() {
@@ -140,8 +165,9 @@ class NcmController extends EventEmitter {
       return this.#launch(exe);
     }
 
-    if (!this.opts.autoLaunch || (this.everConnected && !this.opts.relaunchOnExit)) {
-      this.#setConnection('waiting', this.everConnected ? '网易云音乐已退出，重新打开后将自动连接' : '等待网易云音乐启动');
+    const mayLaunch = this.manualReconnect || (this.opts.autoLaunch && (!this.everConnected || this.opts.relaunchOnExit));
+    if (!mayLaunch) {
+      this.#setConnection('waiting', this.everConnected ? '网易云音乐已退出，点击“重新连接”或手动打开后将自动连接' : '等待网易云音乐启动');
       return null;
     }
     if (Date.now() - this.lastLaunchAt < this.opts.restartCooldown) {
@@ -160,6 +186,7 @@ class NcmController extends EventEmitter {
     this.#log('info', `launching ${exe} --remote-debugging-port=${this.opts.port}`);
     proc.launch(exe, this.opts.port);
     this.lastLaunchAt = Date.now();
+    this.manualReconnect = false;
     return null;
   }
 
@@ -213,7 +240,8 @@ class NcmController extends EventEmitter {
     this.client = null;
     clearTimeout(this.injectTimer);
     Object.assign(this.state, initialPlayerState());
-    this.#setConnection('disconnected', '与网易云音乐的连接已断开');
+    if (this.manualReconnect) this.#setConnection('connecting', '正在重新连接网易云音乐...');
+    else this.#setConnection('disconnected', '与网易云音乐的连接已断开');
   }
 
   // ---------- bridge messages ----------
@@ -228,6 +256,7 @@ class NcmController extends EventEmitter {
     const { type, data } = msg;
     if (type === 'ready') {
       this.everConnected = true;
+      this.manualReconnect = false;
       this.#setConnection('connected', '已连接网易云音乐');
     } else if (type === 'player') {
       this.#applyPlayer(data);
