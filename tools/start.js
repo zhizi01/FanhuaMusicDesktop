@@ -9,5 +9,9 @@ const electron = require('electron');
 const env = { ...process.env };
 delete env.ELECTRON_RUN_AS_NODE;
 
-const child = spawn(electron, ['.', ...process.argv.slice(2)], { cwd: path.join(__dirname, '..'), env, stdio: 'inherit' });
+// `node tools/start.js [script.js] [...electron args]` – runs the app, or another Electron entry script.
+const args = process.argv.slice(2);
+const entry = args[0] && /\.c?js$/.test(args[0]) ? args.shift() : '.';
+
+const child = spawn(electron, [entry, ...args], { cwd: path.join(__dirname, '..'), env, stdio: 'inherit' });
 child.on('close', (code) => process.exit(code ?? 0));

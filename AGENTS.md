@@ -8,6 +8,15 @@ Electron desktop app that reads state from and controls **NetEase Cloud Music (�
 - `npm run dev` – Vite dev server (HMR for the Vue renderer) + Electron (`tools/dev.mjs`). Main/preload edits need a restart.
 - `npm start` – typecheck + `vite build` to `dist/renderer`, then run Electron on the build (`tools/start.js`).
   Both launchers strip `ELECTRON_RUN_AS_NODE`, which Electron-based IDE terminals export.
+  `node tools/start.js other-entry.js` runs another Electron entry script instead of the app.
+- `npm run dist` – build + electron-builder (config in package.json `build`): `release/FanhuaGG-<ver>-Setup.exe`
+  (NSIS, per-user, zh_CN/en_US) and `release/FanhuaGG-<ver>-Portable.exe`; unpacked app in `release/win-unpacked`.
+  Set `ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/` (plus
+  `ELECTRON_MIRROR`) here. Fuses are flipped (runAsNode off, asar-only + integrity), so the packaged exe ignores
+  `ELECTRON_RUN_AS_NODE`; `--remote-debugging-port=9333` still works for `ui-probe`. Not code-signed.
+  Don't run the installer for testing (creates shortcuts/uninstall entries) – test `win-unpacked` and the portable exe.
+- `npm run icons` – `tools/make-icons.js` renders `build/icon.svg` (single logo source, also imported by
+  AppHeader) with Electron offscreen rendering into `build/icon.png` (1024) and `build/icon.ico` (16–256).
 - `npm run typecheck` (vue-tsc) / `npm run build` – **verification for renderer changes**; `node --check <file>` for
   the CommonJS files in `src/main`, `src/preload`, `tools`. No test framework yet.
 - `npm run ncm -- <cmd>` / `node tools/ncm-cli.js <cmd> [--verbose]` – drive the controller without Electron.
@@ -19,8 +28,9 @@ Electron desktop app that reads state from and controls **NetEase Cloud Music (�
 Env: `NCM_DEBUG_PORT` (default 9222), `NCM_PATH` (cloudmusic.exe; otherwise auto-detected from the running
 process, registry `HKLM\SOFTWARE\WOW6432Node\Netease\CloudMusic\install_dir`, or default install paths),
 `MUSIC_DESKTOP_USER_DATA` (separate profile dir: own settings.json + single-instance lock). **Test screensaver/lock
-flows with a temp profile** – the user's real profile (`%APPDATA%\music-desktop\settings.json`) has their own
-password; never change or clear it, and never lock the user's screen with a password they don't know.
+flows with a temp profile** – the user's real profile (`%APPDATA%\FanhuaGG\settings.json`, fixed in main.js for dev
+and packaged builds; copied once from the old `%APPDATA%\music-desktop`) has their own password; never change or
+clear it, and never lock the user's screen with a password they don't know.
 npm registry is npmmirror; set `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` when (re)installing
 Electron, and run `node node_modules/electron/install.js` if `node_modules/electron/dist` is missing.
 TypeScript is pinned to 6.x (vue-tsc needs the JS-based compiler API; TS 7 is the native port).
@@ -45,7 +55,8 @@ TypeScript is pinned to 6.x (vue-tsc needs the JS-based compiler API; TS 7 is th
 - `src/main/ncm/page-bridge.js` – runs **inside NCM** (serialized via `toString()`, must be self-contained).
   Version = hash of its source, so edits replace the copy already living in the page. Shared by several
   controllers (app + CLI) via client ref-counting; removed when the last one calls `release`.
-- `src/main/main.js` – frameless window (custom title bar), content kept at exactly **9:16**: on Windows the native
+- `src/main/main.js` – app id `com.fanhuagg.desktop` (= build.appId), userData `%APPDATA%\FanhuaGG`.
+  Frameless window (custom title bar), content kept at exactly **9:16**: on Windows the native
   aspect ratio applies to the OS rect incl. invisible resize borders (`extraSize` ignored), so the ratio is
   recomputed from the content height after every resize (`applyAspectRatio`). Loads `VITE_DEV_SERVER_URL` in dev,
   else `dist/renderer/index.html`; no app menu in production.

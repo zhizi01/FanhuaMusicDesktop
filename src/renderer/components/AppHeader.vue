@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import logo from '../../../build/icon.svg';
 import { useNcm } from '../composables/useNcm';
 import type { ConnectionStatus } from '../types';
 import IconButton from './IconButton.vue';
@@ -31,7 +32,7 @@ const tone = computed(() => {
 
 <template>
   <header class="app-header">
-    <h1 class="brand">繁花GG</h1>
+    <h1 class="brand"><img class="logo" :src="logo" alt="" />繁花GG</h1>
     <div class="right">
       <div class="status" :class="tone" :title="connection.message">
         <span class="dot" />
@@ -58,6 +59,9 @@ const tone = computed(() => {
   -webkit-app-region: drag;
 }
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -65,6 +69,11 @@ const tone = computed(() => {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+.logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
 }
 .right {
   display: flex;

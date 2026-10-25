@@ -2,24 +2,80 @@
   "name": "music-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Electron music desktop that monitors and controls NetEase Cloud Music via Chrome DevTools Protocol",
+  "description": "繁花GG：网易云音乐桌面伴侣，实时歌词、播放控制与屏保（Electron + Vue）",
+  "author": "zhizi01",
+  "license": "MIT",
   "main": "src/main/main.js",
   "scripts": {
     "dev": "node tools/dev.mjs",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "build": "npm run typecheck && vite build --config vite.config.mts",
     "start": "npm run build && node tools/start.js",
+    "icons": "node tools/start.js tools/make-icons.js",
+    "dist": "npm run build && electron-builder --win --x64",
     "ncm": "node tools/ncm-cli.js"
   },
   "dependencies": {
-    "vue": "3.5.44",
     "ws": "8.22.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "6.0.10",
     "electron": "44.9.0",
+    "electron-builder": "26.17.0",
     "typescript": "6.0.3",
     "vite": "8.3.4",
+    "vue": "3.5.44",
     "vue-tsc": "3.3.13"
+  },
+  "build": {
+    "appId": "com.fanhuagg.desktop",
+    "productName": "繁花GG",
+    "executableName": "FanhuaGG",
+    "copyright": "Copyright © 2026 zhizi01",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "package.json",
+      "src/main/**/*",
+      "src/preload/**/*",
+      "dist/renderer/**/*"
+    ],
+    "asar": true,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "onlyLoadAppFromAsar": true,
+      "enableEmbeddedAsarIntegrityValidation": true
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "繁花GG",
+      "installerLanguages": ["zh_CN", "en_US"],
+      "language": "2052",
+      "artifactName": "FanhuaGG-${version}-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "FanhuaGG-${version}-Portable.${ext}"
+    }
   }
 }

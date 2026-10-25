@@ -1,23 +1,43 @@
 'use strict';
 
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const fs = require('node:fs');
 const path = require('node:path');
 const { NcmController } = require('./ncm/controller');
 const { SettingsStore } = require('./settings');
 const { ScreenSaver } = require('./screensaver');
 const { listFonts } = require('./fonts');
 
-// Optional separate profile (settings + single-instance lock), e.g. for testing without touching real settings.
-if (process.env.MUSIC_DESKTOP_USER_DATA) app.setPath('userData', process.env.MUSIC_DESKTOP_USER_DATA);
+const APP_NAME = '繁花GG';
+const APP_ID = 'com.fanhuagg.desktop'; // keep in sync with build.appId in package.json
+const DATA_DIR = 'FanhuaGG';
+const LEGACY_DATA_DIR = 'music-desktop';
+const ASPECT_RATIO = 9 / 16;
+const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
+
+/**
+ * Fixed ASCII data folder (%APPDATA%\FanhuaGG), identical for `npm start` and installed builds (whose app name
+ * would otherwise come from productName). MUSIC_DESKTOP_USER_DATA overrides it, e.g. for a throwaway test profile.
+ */
+function resolveUserData() {
+  if (process.env.MUSIC_DESKTOP_USER_DATA) return process.env.MUSIC_DESKTOP_USER_DATA;
+  const dir = path.join(app.getPath('appData'), DATA_DIR);
+  const target = path.join(dir, 'settings.json');
+  const legacy = path.join(app.getPath('appData'), LEGACY_DATA_DIR, 'settings.json');
+  if (!fs.existsSync(target) && fs.existsSync(legacy)) {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(legacy, target); // one-time copy from the old folder; the original is left untouched
+  }
+  return dir;
+}
+
+app.setPath('userData', resolveUserData());
+app.setAppUserModelId(APP_ID);
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
   return;
 }
-
-const APP_NAME = '繁花GG';
-const ASPECT_RATIO = 9 / 16;
-const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 
 const controller = new NcmController({
   port: Number(process.env.NCM_DEBUG_PORT) || 9222,
@@ -59,6 +79,8 @@ function createWindow() {
     maximizable: false,
     show: false,
     title: APP_NAME,
+    // Installed builds use the icon embedded in the exe; in development point at the source icon.
+    icon: app.isPackaged ? undefined : path.join(__dirname, '../../build/icon.ico'),
     backgroundColor: '#0e0e13',
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
